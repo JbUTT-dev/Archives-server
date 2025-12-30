@@ -1,0 +1,180 @@
+#!/bin/bash
+
+host=$2
+port=$3
+
+usage(){ 
+	echo "Usage: ./vsh [OPTION] [PARAMETER...]"
+	echo "" 
+	echo "-h, --help                                    display help"
+	echo "-create [host] [port] [archive name]          creation archive" 
+	echo "-list [host] [port]                           list all the archives on the server"
+	echo "-extract [host] [port] [archive name]         extract the archive"
+	echo "-browse [host] [port] [archive name]          open a shell to explore the archive"
+	echo ""
+}
+
+parametre_inconnu(){
+	echo "vsh: paramètre non reconnu '$1'" >&2
+	echo "Essayez 'vsh --help' pour plus d'information" >&2
+}
+
+option_error(){
+	echo "$1: missing operand" >&2
+	echo "Try 'vsh --help' for more information." >&2
+	exit 1
+}
+
+send_request() {
+	local request="$1"
+	echo "$request" | nc "$host" "$port"
+}
+
+# Fonction pour créer et envoyer une archive
+send_create_request() {
+	local archive_name="$1"
+	local current_dir=$(pwd)
+	
+	echo "Création de l'archive '$archive_name.arch'..."
+	
+	# Créer l'archive localement dans /tmp
+	local temp_archive="/tmp/vsh_temp_$.arch"
+	
+	# Créer les répertoires nécessaires
+	mkdir -p "/tmp/vsh_archives_$"
+	
+	# Générer l'archive avec create.sh
+	cd "$(dirname "$0")"
+	if ! bash create.sh "$archive_name" "$current_dir" 2>&1 | grep -q "succès"; then
+		echo "Erreur: create.sh a échoué" >&2
+		cd "$current_dir"
+		rm -rf "/tmp/vsh_archives_$"
+		exit 1
+	fi
+	
+	# Trouver l'archive créée
+	local created_archive="./archives/${archive_name}.arch"
+	if [ ! -f "$created_archive" ]; then
+		echo "Erreur: Archive non trouvée à $created_archive" >&2
+		cd "$current_dir"
+		rm -rf "/tmp/vsh_archives_$"
+		exit 1
+	fi
+	
+	# Copier vers /tmp
+	cp "$created_archive" "$temp_archive"
+	cd "$current_dir"
+	
+	echo "Archive créée avec succès"
+	echo "Header commence à la ligne 2"
+	echo "Body commence à la ligne $(head -1 "$temp_archive" | cut -d':' -f2)"
+	
+	# Envoyer au serveur
+	echo "Envoi au serveur $host:$port..."
+	{
+		echo "CREATE|$archive_name"
+		cat "$temp_archive"
+		echo ""
+		echo "<<<END_ARCHIVE>>>"
+	} | nc -q 1 "$host" "$port"
+	
+	# Nettoyer
+	rm -f "$temp_archive"
+	rm -rf "./archives"
+	rm -rf "/tmp/vsh_archives_$"
+	
+	echo "Transmission terminée"
+}
+
+if [[ $1 == "--help" || $1 == "-h" ]]; then 
+	usage
+	
+elif [[ $1 == "-create" ]]; then
+	[[ $# -lt 4 ]] && option_error "vsh -create"
+	send_create_request "$4"
+	exit
+	
+elif [[ $1 == "-list" ]]; then
+	[[ $# -lt 3 ]] && option_error "vsh -list"
+	echo "Récupération de la liste des archives..."
+	send_request "LIST"
+	exit
+	
+elif [[ $1 == "-extract" ]]; then
+	[[ $# -lt 4 ]] && option_error "vsh -extract"
+	
+	echo "Demande d'extraction de l'archive '$4'..."
+	
+	# Créer un fichier temporaire pour recevoir l'archive
+	TEMP_ARCHIVE=$(mktemp /tmp/vsh_extract_XXXXXX.arch)
+	
+	# Envoyer la requête EXTRACT et recevoir l'archive
+	# Utiliser -w pour attendre la réponse complète
+	echo "EXTRACT|$4" | nc -w 3 "$host" "$port" > "$TEMP_ARCHIVE"
+	
+	# Vérifier si on a reçu une erreur
+	if grep -q "^ERROR:" "$TEMP_ARCHIVE"; then
+		cat "$TEMP_ARCHIVE"
+		rm -f "$TEMP_ARCHIVE"
+		exit 1
+	fi
+	
+	# Vérifier que l'archive n'est pas vide
+	if [ ! -s "$TEMP_ARCHIVE" ]; then
+		echo "Erreur: Aucune donnée reçue du serveur" >&2
+		rm -f "$TEMP_ARCHIVE"
+		exit 1
+	fi
+	
+	# Supprimer les lignes de contrôle à la fin (après <<<END_ARCHIVE>>>)
+	# Créer un fichier temporaire nettoyé
+	CLEAN_ARCHIVE=$(mktemp /tmp/vsh_clean_XXXXXX.arch)
+	
+	# Copier jusqu'au marqueur de fin
+	sed '/<<<END_ARCHIVE>>>/,$d' "$TEMP_ARCHIVE" > "$CLEAN_ARCHIVE"
+	
+	# Vérifier que c'est une archive valide (première ligne = X:Y)
+	first_line=$(head -1 "$CLEAN_ARCHIVE")
+	if [[ ! "$first_line" =~ ^[0-9]+:[0-9]+$ ]]; then
+		echo "Erreur: Format d'archive invalide" >&2
+		echo "Première ligne reçue: $first_line" >&2
+		rm -f "$TEMP_ARCHIVE" "$CLEAN_ARCHIVE"
+		exit 1
+	fi
+	
+	echo "Archive reçue ($(wc -l < "$CLEAN_ARCHIVE") lignes)"
+	echo "Format vérifié: $first_line"
+	
+	# Extraire l'archive avec extract.sh
+	script_dir="$(cd "$(dirname "$0")" && pwd)"
+	if [ -f "$script_dir/extract.sh" ]; then
+		bash "$script_dir/extract.sh" "$CLEAN_ARCHIVE"
+		extract_status=$?
+	else
+		echo "Erreur: extract.sh introuvable dans $script_dir" >&2
+		rm -f "$TEMP_ARCHIVE" "$CLEAN_ARCHIVE"
+		exit 1
+	fi
+	
+	# Nettoyer
+	rm -f "$TEMP_ARCHIVE" "$CLEAN_ARCHIVE"
+	
+	if [ $extract_status -eq 0 ]; then
+		echo ""
+		echo "✓ Extraction terminée avec succès!"
+	else
+		echo "✗ Erreur lors de l'extraction" >&2
+		exit 1
+	fi
+	
+	exit
+	
+elif [[ $1 == "-browse" ]]; then
+	[[ $# -lt 4 ]] && option_error "vsh -browse"
+	root=$(send_request "BROWSE|$4")
+	bash browse.sh $2 $3 $4 $root
+	exit
+	
+else
+	parametre_inconnu $1
+fi
