@@ -1,0 +1,311 @@
+2:152
+directory jb
+Archives-server drwxrwxr-x 4096
+backup drwxrwxr-x 4096
+Desktop drwxr-xr-x 4096
+Documents drwxr-xr-x 4096
+Downloads drwxr-xr-x 4096
+Music drwxr-xr-x 4096
+Pictures drwxr-xr-x 4096
+Public drwxr-xr-x 4096
+snap drwx------ 4096
+Templates drwxr-xr-x 4096
+Test drwxrwxr-x 4096
+Test2 drwxrwxr-x 4096
+Videos drwxr-xr-x 4096
+@
+directory jb\Archives-server
+client drwxrwxr-x 4096
+README.md -rw-rw-r-- 42 1 2
+server drwxrwxr-x 4096
+@
+directory jb\Archives-server\client
+archives drwxrwxr-x 4096
+browse.sh -rw-rw-r-- 0
+create.sh -rw-rw-r-- 4442 1 147
+extract.sh -rw-rw-r-- 5146 148 165
+vsh -rwxrwxr-x 4649 313 180
+@
+directory jb\Archives-server\client\archives
+archive1.arch -rw-rw-r-- 53251 1 1976
+archive2.arch -rw-rw-r-- 127 1977 13
+archive_Documents.arch -rw-rw-r-- 164 1990 8
+test_debug.arch -rw-rw-r-- 7410 1998 273
+@
+directory jb\Archives-server\server
+archives drwxrwxr-x 4096
+create.sh -rw-rw-r-- 4442 1 147
+dir_exists.sh -rw-rw-r-- 0
+extract.sh -rw-rw-r-- 0
+list.sh -rw-rw-r-- 95 148 4
+remove_dir.sh -rw-rw-r-- 0
+server_in.txt -rw-rw-r-- 0
+server.sh -rw-rw-r-- 3956 152 146
+@
+directory jb\Archives-server\server\archives
+archive2.arch -rw-rw-r-- 127 1 13
+archive_Documents.arch -rw-rw-r-- 164 14 8
+@
+directory jb\backup
+server.sh -rw-rw-r-- 1361 1 48
+@
+directory jb\Desktop
+@
+directory jb\Documents
+Adresses.txt -rw-rw-r-- 0
+Compta.txt -rw-rw-r-- 0
+Force.txt -rw-rw-r-- 39 1 1
+Padawan -rw-rw-r-- 0
+@
+directory jb\Downloads
+Anime Landscape Wallpaper HD Net.jpg -rw-rw-r-- 0
+Anime-trees-sunset-clouds-nature-landscape_1680x1050.jpg -rw-rw-r-- 0
+@
+directory jb\Music
+@
+directory jb\Pictures
+@
+directory jb\Public
+@
+directory jb\snap
+firefox drwxr-xr-x 4096
+firmware-updater drwxr-xr-x 4096
+snapd-desktop-integration drwxr-xr-x 4096
+@
+directory jb\snap\firefox
+6565 drwxr-xr-x 4096
+7559 drwxr-xr-x 4096
+common drwxr-xr-x 4096
+current lrwxrwxrwx 4
+@
+directory jb\snap\firefox\6565
+@
+directory jb\snap\firefox\7559
+@
+directory jb\snap\firefox\common
+@
+directory jb\snap\firmware-updater
+210 drwxr-xr-x 4096
+common drwxr-xr-x 4096
+current lrwxrwxrwx 3
+@
+directory jb\snap\firmware-updater\210
+@
+directory jb\snap\firmware-updater\common
+@
+directory jb\snap\snapd-desktop-integration
+315 drwxr-xr-x 4096
+common drwxr-xr-x 4096
+current lrwxrwxrwx 3
+@
+directory jb\snap\snapd-desktop-integration\315
+Desktop drwxr-xr-x 4096
+Documents drwxr-xr-x 4096
+Downloads drwxr-xr-x 4096
+Music drwxr-xr-x 4096
+Pictures drwxr-xr-x 4096
+Public drwxr-xr-x 4096
+Templates drwxr-xr-x 4096
+Videos drwxr-xr-x 4096
+@
+directory jb\snap\snapd-desktop-integration\315\Desktop
+@
+directory jb\snap\snapd-desktop-integration\315\Documents
+@
+directory jb\snap\snapd-desktop-integration\315\Downloads
+@
+directory jb\snap\snapd-desktop-integration\315\Music
+@
+directory jb\snap\snapd-desktop-integration\315\Pictures
+@
+directory jb\snap\snapd-desktop-integration\315\Public
+@
+directory jb\snap\snapd-desktop-integration\315\Templates
+@
+directory jb\snap\snapd-desktop-integration\315\Videos
+@
+directory jb\snap\snapd-desktop-integration\common
+@
+directory jb\Templates
+@
+directory jb\Test
+Documents drwxrwxr-x 4096
+Test2 drwxrwxr-x 4096
+test_manual -rw-rw-r-- 149 1 15
+@
+directory jb\Test\Documents
+Adresses.txt -rw-rw-r-- 0
+Compta.txt -rw-rw-r-- 0
+Force.txt -rw-rw-r-- 39 1 1
+Padawan -rw-rw-r-- 0
+@
+directory jb\Test\Test2
+titi -rw-rw-r-- 64 1 8
+toto -rw-rw-r-- 0
+@
+directory jb\Test2
+titi -rw-rw-r-- 64 1 8
+toto -rw-rw-r-- 0
+@
+directory jb\Videos
+@
+# Archives-server
+Project student for UTT
+#!/bin/bash
+
+# Script pour créer une archive au format spécifié
+# Usage: ./create.sh <nom_archive> <repertoire_source>
+
+ARCHIVE_NAME="$1"
+SOURCE_DIR="$2"
+ARCHIVE_DIR="./archives"
+
+# Vérification des arguments
+if [ $# -ne 2 ]; then
+    echo "Erreur: Usage: $0 <nom_archive> <repertoire_source>" >&2
+    exit 1
+fi
+
+# Vérifier que le répertoire source existe
+if [ ! -d "$SOURCE_DIR" ]; then
+    echo "Erreur: Le répertoire source '$SOURCE_DIR' n'existe pas" >&2
+    exit 1
+fi
+
+# Ajouter l'extension .arch si absente
+if [[ ! "$ARCHIVE_NAME" =~ \.arch$ ]]; then
+    ARCHIVE_NAME="${ARCHIVE_NAME}.arch"
+fi
+
+# Créer le répertoire d'archives
+mkdir -p "$ARCHIVE_DIR"
+
+ARCHIVE_PATH="$ARCHIVE_DIR/$ARCHIVE_NAME"
+TEMP_HEADER=$(mktemp)
+TEMP_BODY=$(mktemp)
+
+# Fonction pour obtenir les permissions au format textuel
+get_permissions() {
+    local file="$1"
+    ls -ld "$file" | cut -c1-10
+}
+
+# Fonction pour obtenir la taille en octets
+get_size() {
+    stat -c "%s" "$1" 2>/dev/null || stat -f "%z" "$1" 2>/dev/null || echo "0"
+}
+
+# Compteur de lignes dans le body
+BODY_LINE=1
+
+# Fonction récursive pour traiter un répertoire
+process_directory() {
+    local dir="$1"
+    local archive_path="$2"
+    
+    # En-tête du répertoire
+    echo "directory $archive_path" >> "$TEMP_HEADER"
+    
+    # Lister le contenu (fichiers et répertoires)
+    find "$dir" -maxdepth 1 -mindepth 1 ! -name '.*' -printf "%f\n" 2>/dev/null | sort | while read -r item; do
+        local fullpath="$dir/$item"
+        
+        # Ignorer si n'existe pas
+        [ -e "$fullpath" ] || continue
+        
+        local perms=$(get_permissions "$fullpath")
+        local size=$(get_size "$fullpath")
+        
+        if [ -d "$fullpath" ]; then
+            # C'est un répertoire
+            echo "$item $perms $size" >> "$TEMP_HEADER"
+            
+        elif [ -f "$fullpath" ]; then
+            # C'est un fichier
+            if [ "$size" -eq 0 ]; then
+                # Fichier vide
+                echo "$item $perms 0" >> "$TEMP_HEADER"
+            else
+                # Fichier non vide - vérifier si c'est du texte
+                if file "$fullpath" | grep -q "text"; then
+                    # Compter les lignes
+                    local num_lines=$(wc -l < "$fullpath")
+                    
+                    # Ajouter 1 si pas de newline final
+                    if [ -s "$fullpath" ]; then
+                        local last_char=$(tail -c 1 "$fullpath" | od -An -tx1 | tr -d ' \n')
+                        if [ "$last_char" != "0a" ]; then
+                            num_lines=$((num_lines + 1))
+                        fi
+                    fi
+                    
+                    # Ajouter l'entrée au header
+                    echo "$item $perms $size $BODY_LINE $num_lines" >> "$TEMP_HEADER"
+                    
+                    # Ajouter le contenu au body
+                    cat "$fullpath" >> "$TEMP_BODY"
+                    
+                    # Mettre à jour le compteur
+                    BODY_LINE=$((BODY_LINE + num_lines))
+                else
+                    # Fichier binaire - ignorer pour ce projet (seulement texte)
+                    echo "$item $perms 0" >> "$TEMP_HEADER"
+                fi
+            fi
+        fi
+    done
+    
+    # Fin du répertoire
+    echo "@" >> "$TEMP_HEADER"
+    
+    # Traiter récursivement les sous-répertoires
+    find "$dir" -maxdepth 1 -mindepth 1 -type d ! -name '.*' -printf "%f\n" 2>/dev/null | sort | while read -r subdir; do
+        local fullpath="$dir/$subdir"
+        [ -d "$fullpath" ] || continue
+        process_directory "$fullpath" "$archive_path\\$subdir"
+    done
+}
+
+# Obtenir le nom du répertoire racine
+if [ "$SOURCE_DIR" = "." ]; then
+    ROOT_NAME=$(basename "$(pwd)")
+else
+    ROOT_NAME=$(basename "$(cd "$SOURCE_DIR" && pwd)")
+fi
+
+echo "Création de l'archive pour: $ROOT_NAME" >&2
+
+# Traiter l'arborescence
+process_directory "$SOURCE_DIR" "$ROOT_NAME"
+
+# Calculer les numéros de lignes
+HEADER_START=2
+HEADER_LINES=$(wc -l < "$TEMP_HEADER")
+BODY_START=$((HEADER_START + HEADER_LINES))
+
+# Créer l'archive finale
+{
+    echo "$HEADER_START:$BODY_START"
+    cat "$TEMP_HEADER"
+    cat "$TEMP_BODY"
+} > "$ARCHIVE_PATH"
+
+# Nettoyer les fichiers temporaires
+rm -f "$TEMP_HEADER" "$TEMP_BODY"
+
+echo "Archive créée avec succès: $ARCHIVE_PATH" >&2
+echo "Header commence à la ligne $HEADER_START" >&2
+echo "Body commence à la ligne $BODY_START" >&2
+
+exit 0
+#!/bin/bash
+
+# extract.sh - Extrait une archive VSH dans le répertoire courant
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <archive_file>" >&2
+    exit 1
+fi
+
+ARCHIVE_FILE="$1"
+

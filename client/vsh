@@ -171,10 +171,47 @@ elif [[ $1 == "-extract" ]]; then
 	
 elif [[ $1 == "-browse" ]]; then
 	[[ $# -lt 4 ]] && option_error "vsh -browse"
-	root=$(send_request "BROWSE|$4")
-	bash browse.sh $2 $3 $4 $root
-	exit
-	
+
+	echo "Demande browse de l'archive '$4'..."
+
+	# 1) On récupère l'archive depuis le serveur (comme EXTRACT)
+	TEMP_ARCHIVE=$(mktemp /tmp/vsh_browse_XXXXXX.arch)
+	echo "BROWSE|$4" | nc -w 3 "$host" "$port" > "$TEMP_ARCHIVE"
+
+	# Erreur serveur ?
+	if grep -q "^ERROR:" "$TEMP_ARCHIVE"; then
+		cat "$TEMP_ARCHIVE"
+		rm -f "$TEMP_ARCHIVE"
+		exit 1
+	fi
+
+	# Nettoyage jusqu'au marqueur
+	CLEAN_ARCHIVE=$(mktemp /tmp/vsh_browse_clean_XXXXXX.arch)
+	sed '/<<<END_ARCHIVE>>>/,$d' "$TEMP_ARCHIVE" > "$CLEAN_ARCHIVE"
+
+	# Vérif format minimal
+	first_line=$(head -1 "$CLEAN_ARCHIVE")
+	if [[ ! "$first_line" =~ ^[0-9]+:[0-9]+$ ]]; then
+		echo "Erreur: archive reçue invalide pour browse" >&2
+		echo "Première ligne: $first_line" >&2
+		rm -f "$TEMP_ARCHIVE" "$CLEAN_ARCHIVE"
+		exit 1
+	fi
+
+	# 2) On lance TON browse.sh (mini-shell local) sur le fichier reçu
+	script_dir="$(cd "$(dirname "$0")" && pwd)"
+	if [ ! -f "$script_dir/browse.sh" ]; then
+		echo "Erreur: browse.sh introuvable dans $script_dir" >&2
+		rm -f "$TEMP_ARCHIVE" "$CLEAN_ARCHIVE"
+		exit 1
+	fi
+
+	# browse.sh attend: -browse local 0 <archive>
+	bash "$script_dir/browse.sh" -browse local 0 "$CLEAN_ARCHIVE"
+
+	# 3) Nettoyage
+	rm -f "$TEMP_ARCHIVE" "$CLEAN_ARCHIVE"
+	exit	
 else
 	parametre_inconnu $1
 fi

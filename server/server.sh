@@ -13,42 +13,40 @@ echo "Archives directory: $ARCHIVES_DIR"
 while true; do
 	# Créer des fichiers temporaires
 	TEMP_FILE=$(mktemp)
-	
+
 	# Utiliser un named pipe pour la réponse bidirectionnelle
 	FIFO="/tmp/vsh_fifo_$$"
 	mkfifo "$FIFO"
-	
+
 	# Lancer nc avec la FIFO pour permettre la bidirectionnalité
 	nc -l -p "$PORT" < "$FIFO" | {
 		# Sauvegarder la requête
 		tee "$TEMP_FILE" | head -1 | {
 			read -r cmd_line
-			
+
 			# Séparer la commande et l'argument avec |
 			cmd=$(echo "$cmd_line" | cut -d'|' -f1)
 			arg=$(echo "$cmd_line" | cut -d'|' -f2)
-			
+
 			echo "[$(date '+%Y-%m-%d %H:%M:%S')] Commande reçue: $cmd $arg" >&2
-			
-			# Traiter la commande et envoyer la réponse dans la FIFO
+
 			case "$cmd" in
 				# ---------------- CREATE ----------------
 				CREATE)
-					# Attendre que tout le fichier soit reçu
 					sleep 0.2
-					
+
 					archive_name="$arg"
-					
+
 					# Ajouter .arch si nécessaire
 					if [[ ! "$archive_name" =~ \.arch$ ]]; then
 						archive_name="${archive_name}.arch"
 					fi
-					
+
 					archive_path="$ARCHIVES_DIR/$archive_name"
-					
+
 					# Extraire le contenu (tout sauf la première ligne et les 2 dernières)
 					tail -n +2 "$TEMP_FILE" | head -n -2 > "$archive_path"
-					
+
 					if [ -s "$archive_path" ]; then
 						echo "OK: Archive '$archive_name' créée avec succès"
 						echo "Taille: $(du -h "$archive_path" | cut -f1)"
@@ -59,14 +57,12 @@ while true; do
 						rm -f "$archive_path"
 					fi
 					;;
-					
+
 				# ---------------- LIST ----------------
 				LIST)
-					# Exécuter list.sh
 					if [ -f "./list.sh" ]; then
 						bash ./list.sh
 					else
-						# Fallback si list.sh n'existe pas
 						echo "=== Archives disponibles ==="
 						if [ -d "$ARCHIVES_DIR" ]; then
 							count=$(find "$ARCHIVES_DIR" -maxdepth 1 -name "*.arch" -type f 2>/dev/null | wc -l)
@@ -86,51 +82,53 @@ while true; do
 						echo ""
 						echo "=== Fin de la liste ==="
 					fi
-					
+
 					echo "---"
 					echo "Liste envoyée au client" >&2
 					;;
-					
-	
+
 				# ---------------- EXTRACT ----------------
 				EXTRACT)
-    					archive_name="$arg"
-    
-    					# Ajouter .arch si nécessaire
-    					if [[ ! "$archive_name" =~ \.arch$ ]]; then
-       						archive_name="${archive_name}.arch"
-    					fi
-    
-    					archive_path="$ARCHIVES_DIR/$archive_name"
-    
-    					if [[ -f "$archive_path" ]]; then
-        					echo "Envoi de l'archive '$archive_name'..." >&2
-        					cat "$archive_path"
-        					echo ""
-        					echo "<<<END_ARCHIVE>>>"  # Utilisez le même marqueur que dans vsh
-    					else
-        					echo "ERROR: Archive '$archive_name' introuvable"
-   					fi
-    					;;
-					
-				# ---------------- BROWSE ----------------
-				BROWSE)
 					archive_name="$arg"
-					
-					# Ajouter .arch si nécessaire
+
 					if [[ ! "$archive_name" =~ \.arch$ ]]; then
 						archive_name="${archive_name}.arch"
 					fi
-					
+
 					archive_path="$ARCHIVES_DIR/$archive_name"
-					
+
 					if [[ -f "$archive_path" ]]; then
-						echo "$archive_path"
+						echo "Envoi de l'archive '$archive_name'..." >&2
+						cat "$archive_path"
+						echo ""
+						echo "<<<END_ARCHIVE>>>"
 					else
 						echo "ERROR: Archive '$archive_name' introuvable"
 					fi
 					;;
-					
+
+				# ---------------- BROWSE ----------------
+				# IMPORTANT : on n'envoie PAS un chemin local (inaccessible côté client),
+				# on envoie l'archive (comme EXTRACT). Le client la met en /tmp et lance browse.sh dessus.
+				BROWSE)
+					archive_name="$arg"
+
+					if [[ ! "$archive_name" =~ \.arch$ ]]; then
+						archive_name="${archive_name}.arch"
+					fi
+
+					archive_path="$ARCHIVES_DIR/$archive_name"
+
+					if [[ -f "$archive_path" ]]; then
+						echo "Envoi de l'archive '$archive_name' pour browse..." >&2
+						cat "$archive_path"
+						echo ""
+						echo "<<<END_ARCHIVE>>>"
+					else
+						echo "ERROR: Archive '$archive_name' introuvable"
+					fi
+					;;
+
 				# ---------------- ERREUR ----------------
 				*)
 					echo "ERROR: Commande inconnue '$cmd'"
@@ -138,9 +136,8 @@ while true; do
 			esac
 		} > "$FIFO"
 	}
-	
+
 	# Nettoyer
 	rm -f "$TEMP_FILE" "$FIFO"
-	
 	echo "---" >&2
 done
